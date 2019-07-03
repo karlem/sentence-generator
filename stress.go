@@ -3,7 +3,7 @@ package main
 import (
 	"bufio"
 	"fmt"
-	"io/ioutil"
+	"log"
 	"math/rand"
 	"os"
 	"sync"
@@ -13,21 +13,36 @@ import (
 )
 
 func stress() {
+	fmt.Println("Running stress test....")
+	t := time.Now()
 	gen := generator.NewGenerator()
-
 	var wg sync.WaitGroup
 
 	wg.Add(10)
 	go func() {
 		for index := 0; index < 10; index++ {
 			go (func() {
-				dat, err := ioutil.ReadFile("corpus.txt")
+				f, err := os.Open("bible.txt")
 				if err != nil {
 					panic(err)
 				}
-				corpus := string(dat)
 
-				gen.Learn(corpus)
+				scanner := bufio.NewScanner(f)
+				for scanner.Scan() {
+					t := scanner.Text()
+
+					// No need to try process
+					if len(t) == 0 {
+						continue
+					}
+
+					gen.Learn(t)
+				}
+				if err := scanner.Err(); err != nil {
+					log.Printf("/learn - Error occured during learning: %s", err)
+					return
+				}
+
 				wg.Done()
 			})()
 		}
@@ -62,34 +77,8 @@ func stress() {
 		case text := <-txtChan:
 			fmt.Println(text)
 		case <-doneChan:
+			fmt.Printf("Test finished after: %s \n", time.Now().Sub(t))
 			os.Exit(0)
 		}
 	}
-}
-
-func stressFile() {
-	fmt.Println("Running stress test....")
-	t := time.Now()
-	gen := generator.NewGenerator()
-
-	f, _ := os.Open("./bible.txt")
-	scanner := bufio.NewScanner(f)
-
-	for scanner.Scan() {
-		t := scanner.Text()
-
-		// No need to try procees empty lines
-		if len(t) == 0 {
-			continue
-		}
-
-		gen.Learn(t)
-	}
-	if err := scanner.Err(); err != nil {
-		fmt.Print("Error occured during learning:", err)
-		return
-	}
-
-	fmt.Printf("Test finished after: %s \n", time.Now().Sub(t))
-	fmt.Println(gen.Generate())
 }

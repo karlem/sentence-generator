@@ -10,18 +10,10 @@ import (
 
 const separator = " "
 
-var punctuationNoCommaReg = regexp.MustCompile("[.!?]")
-
-type keyPair struct {
-	f, s string
-}
-
-var trigramsFreqMutex = sync.RWMutex{}
-
-type generator struct {
-	pairs        []keyPair
-	trigramsFreq map[keyPair]map[string]int
-}
+var (
+	trigramsFreqMutex = sync.RWMutex{}
+	endOfSentenceReg  = regexp.MustCompile("[.!?]")
+)
 
 // Generator - thread safe random text generator.
 // Generate - generates randomly N number of sentences based on corpus. Return empty string if corpus has not been process.
@@ -29,6 +21,16 @@ type generator struct {
 type Generator interface {
 	Learn(string)
 	Generate() string
+}
+
+type keyPair struct {
+	f, s string
+}
+
+// Pairs are used for quick random lookup
+type generator struct {
+	pairs        []keyPair
+	trigramsFreq map[keyPair]map[string]int
 }
 
 // NewGenerator - returns new instance of Generator
@@ -107,6 +109,7 @@ func (g *generator) addTrigramsFrequencies(trigrams []trigram) {
 			g.trigramsFreq[key] = map[string]int{lastToken: 1}
 			g.pairs = append(g.pairs, key)
 			trigramsFreqMutex.Unlock()
+			continue
 		}
 
 		trigramsFreqMutex.Lock()
@@ -132,7 +135,7 @@ func (g *generator) Generate() string {
 
 	// Add first two words from key pair
 	randText.WriteString(strings.Title(currentKey.f))
-	randText.WriteString(" ")
+	randText.WriteString(separator)
 	randText.WriteString(currentKey.s)
 
 	// Generates at least 2 sentences
@@ -147,12 +150,12 @@ func (g *generator) Generate() string {
 		currentKey = keyPair{currentKey.s, nextWord}
 
 		// If text ends with [.!?] count as new sentence
-		if punctuationNoCommaReg.MatchString(currentKey.s) == true {
+		if endOfSentenceReg.MatchString(currentKey.s) == true {
 			generatedSentences++
 		}
 
-		// In case text does not contain any punctuation.
-		// Maximum number of sentences is cca. 5000 bytes
+		// In case the text does not contain any punctuation.
+		// Maximum number of sentences is cca 5000 bytes
 		if generatedSentences == 0 && randText.Len() > 5000 {
 			break
 		}

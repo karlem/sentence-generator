@@ -18,7 +18,7 @@ func (a API) learnHandler(w http.ResponseWriter, r *http.Request) {
 	for scanner.Scan() {
 		t := scanner.Text()
 
-		// No need to try procees empty lines
+		// No need to try process
 		if len(t) == 0 {
 			continue
 		}

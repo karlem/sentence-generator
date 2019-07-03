@@ -15,6 +15,6 @@ func main() {
 		s := api.NewAPI()
 		s.Run()
 	} else {
-		stressFile()
+		stress()
 	}
 }
